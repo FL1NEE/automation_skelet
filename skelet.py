@@ -19,7 +19,7 @@ def get_user_data_dir():
 errors: int = 0
 success: int = 0
 script_path: str = os.path.abspath(__file__)
-path_to_extension: str = os.path.join(str(script_path).replace(r"\main.py", "\\MetaMask"))
+path_to_extension: str = os.path.join(str(script_path).replace(r"/main.py", "//MetaMask"))
 
 async def human_delay(min_seconds: float = 0.5, max_seconds: float = 2.0):
 	"""Случайные задержки для имитации человеческого поведения"""
@@ -164,7 +164,7 @@ async def connect_to_bytenova(context: BrowserContext, extension_id: str):
 	except:pass
 	await bytenova_page.close()
 
-async def auto_daily_checkin(ip: str, page: Page, context: BrowserContext, extension_id: str):
+async def auto_daily_checkin(ip: str, page: Page, extension_id: str, context: BrowserContext):
 	"""Выполнение Daily Check-In в проекте Bytenova"""
 	global errors, success
 	mt_page: str | None = None
@@ -258,7 +258,7 @@ async def run(ip: str, seed_phrase: list, private_key: str, playwright: Playwrig
 	)
 
 	await context.close()
-	shutil.rmtree(data_dir, ignore_errors=True)
+	shutil.rmtree(data_dir, ignore_errors = True)
 
 async def main(ip: str, seed_phrase: str, private_key: str):
 	"""Стартер раннера"""
