@@ -55,7 +55,7 @@ async def get_extension_id(page: Page) -> str:
 			await back_btn.click()
 
 
-	return extension_id_by_name.get("MetaMask")# or RabbyWallet
+	return extension_id_by_name.get("MetaMask")
 
 async def full_wallet_setup(page: Page, seed_phrase: list, private_key: str, extension_id: str):
 	"""Полная авторизация в кошельке MetaMask"""
@@ -136,30 +136,27 @@ async def connect_to_bytenova(context: str, extension_id: str):
     if mt_page:
     	for selector in ["text=Одобрить", "text=Confirm", "test-id=confirm-btn"]:
     		try:
-    			await mt_page.locator(selector.replace("text=", "")).click(timeout = 3000)
-    			break
+    			await mt_page.locator(selector.replace("text=", "")).click(timeout = 3000);break
     		except:continue
 
     	try:await mt_page.get_by_test_id("confirm-footer-button").click()
     	except:pass
 
-    # Создание аккаунта
     try:
         create_btn = bytenova_page.get_by_text('Create a new account').first
         if await create_btn.is_visible():
             await create_btn.click()
-            print("Аккаунт создан")
+            print(f"[INFO] {datetime.now()} Аккаунт создан!")
     except:
         pass
 
     await bytenova_page.close()
 
-# ✅ НОВАЯ ФУНКЦИЯ: Автоопределение дня
 async def auto_daily_checkin(context, metamask_extension_id: str, ip: str):
     global success, error
     bytenova_page = await context.new_page()
     try:
-        await bytenova_page.goto("https://bytenova.ai/rewards/quests")  # ✅ Без пробелов
+        await bytenova_page.goto("https://bytenova.ai/rewards/quests")
         await human_delay(3.0, 5.0)
         await phantom_scroll(bytenova_page, 4)
 
@@ -179,9 +176,8 @@ async def auto_daily_checkin(context, metamask_extension_id: str, ip: str):
             await button.click()
             await human_delay(1.0, 1.5)
 
-            # Ожидаем MetaMask
             mt_page = None
-            for _ in range(10):  # Ждём до 10 сек
+            for _ in range(10):
                 for page in context.pages:
                     url = page.url
                     if ('notification.html' in url or 'popup.html' in url) and metamask_extension_id in url:
@@ -195,7 +191,6 @@ async def auto_daily_checkin(context, metamask_extension_id: str, ip: str):
                 print(f"✅ MetaMask появился при Day {day} → это следующий день!")
                 completed_up_to = day
 
-                # Подтверждение
                 try: await mt_page.get_by_text("Подтвердить").click(); await human_delay(1, 2)
                 except: pass
                 try: await mt_page.get_by_text("Confirm").click(); await human_delay(1, 2)
@@ -210,11 +205,10 @@ async def auto_daily_checkin(context, metamask_extension_id: str, ip: str):
                     text=f"#BYTENOVA\n\n✅ <i><b>SUCCESS</b></i>\n\n<b>Сервер</b>: {ip}\n<b>ByteNova - Выполнен чекин до Day {day}</b>"
                 )
                 success += 1
-                break  # Выход после успешного
+                break
             else:
                 print(f"❌ MetaMask не появился → Day {day} уже выполнен")
 
-        # Обновляем БД: все дни от 1 до completed_up_to = True
         if completed_up_to > 0:
             DB = sqlite3.connect("servers.db", check_same_thread=False)
             CURSOR = DB.cursor()
@@ -256,7 +250,6 @@ async def run(playwright: Playwright, seed_phrase: list, private_key: str, ip: s
     await full_wallet_setup(page, metamask_extension_id, seed_phrase, private_key)
     await connect_to_bytenova(context, metamask_extension_id)
     
-    # ✅ Заменено: автоматический чекин
     await auto_daily_checkin(context, metamask_extension_id, ip)
 
     await context.close()
