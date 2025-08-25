@@ -55,7 +55,7 @@ async def get_extension_id(page: Page) -> str:
 			await back_btn.click()
 
 
-	return extension_id_by_name.get("MetaMask")
+	return extension_id_by_name.get("MetaMask")# Для рэбби RabbyWallet
 
 async def full_wallet_setup(page: Page, seed_phrase: list, private_key: str, extension_id: str):
 	"""Полная авторизация в кошельке MetaMask"""
@@ -257,3 +257,4 @@ async def run(playwright: Playwright, seed_phrase: list, private_key: str, ip: s
 async def main(seed_phrase: str, private_key: str, ip: str):
     async with async_playwright() as p:
         await run(p, seed_phrase.split(), private_key, ip)
+
