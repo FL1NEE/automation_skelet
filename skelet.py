@@ -4,7 +4,6 @@ import shutil
 import random
 import asyncio
 import sqlite3
-import telebot
 from pathlib import Path
 from datetime import datetime
 from playwright.async_api import Page
@@ -19,7 +18,7 @@ def get_user_data_dir():
 errors: int = 0
 success: int = 0
 script_path: str = os.path.abspath(__file__)
-path_to_extension: str = os.path.join(str(script_path).replace(r"/main.py", "//MetaMask"))
+path_to_extension: str = os.path.join(str(script_path).replace(r"\main.py", "\\Rabby"))
 
 async def human_delay(min_seconds: float = 0.5, max_seconds: float = 2.0):
 	"""Случайные задержки для имитации человеческого поведения"""
@@ -40,7 +39,7 @@ async def phantom_scroll(page: Page, scroll_count: int = 5):
 	await human_delay(0.5, 1.5)
 
 async def get_extension_id(page: Page) -> str:
-	"""Получает ID расширения MetaMask"""
+	"""Получает ID расширения Rabby"""
 	await page.goto("chrome://extensions")
 	extension_id_by_name: dict = {}
 
@@ -60,66 +59,62 @@ async def get_extension_id(page: Page) -> str:
 		async with page.expect_navigation():
 			await back_btn.click()
 
-	return extension_id_by_name.get("MetaMask")
+	return extension_id_by_name.get("RabbyWallet")
 
-async def full_wallet_setup(page: Page, context: BrowserContext, seed_phrase: list, private_key: str, extension_id: str):
-	"""Полная авторизация в кошельке MetaMask"""
-	len_seed: int = len(seed_phrase)
+async def full_wallet_setup(page: Page, context: BrowserContext, private_key: str, extension_id: str):
+	"""Полная авторизация в кошельке RabbyWallet"""
 	password: str = "12345678"
 
 	await page.goto(
-		url = f"chrome-extension://{extension_id}/home.html#onboarding/welcome"
+		url = f"chrome-extension://{extension_id}/index.html#/new-user/guide"
 	)
-
-	await human_delay(1, 2.5)
 
 	if len(context.pages) > 2:
 		page_to_close = context.pages[2]
 		print(f"[INFO] {datetime.now()} Закрываю:", page_to_close.url)
 		await page_to_close.close()
 
-	page = context.pages[1]
+	page: Page = context.pages[1]
 
-	await page.get_by_test_id("onboarding-terms-checkbox").click()
-	await page.get_by_test_id("onboarding-import-wallet").click()
-	await page.get_by_test_id("metametrics-no-thanks").click()
+	await page.get_by_text("I already have an address").click()
 
-	if len_seed != 12:
-		dropdown: str = page.locator(".dropdown__select").nth(1)
-		await dropdown.select_option(value = str(len_seed))
+	await page.get_by_text("Private Key").click()
 
-	for idx, word in enumerate(seed_phrase):
-		await page.get_by_test_id(f"import-srp__srp-word-{idx}").fill(word)
+	await page.locator("#privateKey").fill(private_key)
+	await page.get_by_text("Confirm").click()
 
-	await page.get_by_test_id("import-srp-confirm").click()
-
-	for test_id in ("create-password-new", "create-password-confirm"):
-		await page.get_by_test_id(test_id).fill(password)
-
-	await page.get_by_test_id("create-password-terms").click()
-	await page.get_by_test_id("create-password-import").click()
-	await page.get_by_test_id("onboarding-complete-done").click()
-	await page.get_by_test_id("pin-extension-next").click()
-	await page.get_by_test_id("pin-extension-done").click()
-
-	await page.goto(
-		url = f"chrome-extension://{extension_id}/home.html"
-	)
-
-	try:
-		await page.get_by_test_id("unlock-password").fill("12345678")
-		await page.get_by_test_id("unlock-submit").click()
+	await page.locator("#password").fill(password)
+	await page.locator("#confirmPassword").fill(password)
+	try:await page.get_by_text("Confirm").click()
 	except:pass
+	try:await page.get_by_text("Get Started").click()
+	except:pass
+	try:await page.get_by_text("Done").click()
+	except:pass
+	print(f"[INFO] {datetime.now()} АВТОРИЗАЦИЯ В RABBY WALLET ПРОЙДЕНА!")
 
-	try:await page.get_by_test_id("account-menu-icon").click()
-	except:await page.get_by_text("Account 1").click()
+async def wallet_login(page: Page, rabby_extension_id: str):
+	""""""
+	await page.goto(
+		url = f"chrome-extension://{rabby_extension_id}/popup.html"
+	)
+	await page.locator("#password").fill("12345678")
+	await page.get_by_text("Unlock").click()
+	print("[INFO] СОВЕРШИЛ ВХОД В КОШЕЛЕК")
 
-	await page.get_by_test_id("multichain-account-menu-popover-action-button").click()
-	await page.get_by_test_id("multichain-account-menu-popover-add-imported-account").click()
-	await page.locator("#private-key-box").fill(private_key)
-	await page.get_by_test_id("import-account-confirm-button").click()
+async def sign_rabby(context: BrowserContext, extension_id: str):
+	rabby_page: str | None = None
+	for _page in context.pages:
+		url: str = _page.url
+		if f"{extension_id}/notification.html" in url:
+			rabby_page: str = _page
+			break
 
-	print(f"[INFO] {datetime.now()} Кошелек успешно настроен!")
+	if rabby_page:
+		try:await rabby_page.get_by_role("button", name="Sign").click()
+		except:pass
+		try:await rabby_page.get_by_role("button", name="Confirm").click()
+		except:pass
 
 async def connect_to_bytenova(context: BrowserContext, extension_id: str):
 	bytenova_page: Page = await context.new_page()
@@ -130,6 +125,13 @@ async def connect_to_bytenova(context: BrowserContext, extension_id: str):
 	)
 	await human_delay(3.0, 5.0)
 	await phantom_scroll(bytenova_page, 3)
+
+	try:
+		data: str = bytenova_page.get_by_text("Login").first
+		await data.click()
+		await human_delay(1.0, 2.0)
+	except:pass
+
 
 	try:
 		data: str = bytenova_page.get_by_text("Connect Wallet").first
@@ -149,14 +151,15 @@ async def connect_to_bytenova(context: BrowserContext, extension_id: str):
 			break
 
 	if mt_page:
-		try:await mt_page.get_by_test_id("confirm-btn").click()
+		try:
+			connection = mt_page.get_by_text("Connect").nth(2)
+			await connection.click()
+			await asyncio.sleep(2)
+			await sign_rabby(context, extension_id)
 		except:pass
-		try:await mt_page.get_by_test_id('confirmation-submit-button').click()
-		except:
-			try:await mt_page.get_by_text("Одобрить").click()
-			except:pass
-		try:await mt_page.get_by_test_id("confirm-footer-button").click()
-		except:await mt_page.get_by_text("Подтвердить").click()
+	await asyncio.sleep(2)
+	try:await sign_rabby(context, extension_id)
+	except:pass
 	try:
 		create_btn: str = bytenova_page.get_by_text('Create a new account').first
 		if await create_btn.is_visible():await create_btn.click()
@@ -184,28 +187,12 @@ async def auto_daily_checkin(ip: str, page: Page, extension_id: str, context: Br
 			btn: str = bytenova_page.get_by_text(btn_text).first
 
 			if not await btn.is_visible():continue
-
+      
 			await btn.click()
 			await human_delay(1.0, 1.5)
 
-			for _ in range(10):
-				for _page in context.pages:
-					url: str = _page.url
-					if "notification.html" in url and extension_id in url:
-						mt_page: str = _page
-						break
-				if mt_page:break
-				await asyncio.sleep(1)
-
-			if mt_page:
-				print(f"[INFO] {datetime.now()} НАШЕЛ ДЕНЬ: {day}!")
-				try:await mt_page.get_by_text("Подтвердить").click();await human_delay(1, 2)
-				except:pass
-				try:await mt_page.get_by_text("Confirm").click();await human_delay(1, 2)
-				except:pass
-				try:await mt_page.get_by_test_id("confirm-footer-button").click();await human_delay(2, 3)
-				except:pass
-
+			try:
+				await sign_rabby(context, extension_id)
 				success += 1
 				DB: sqlite3.Connection = sqlite3.connect(
 					f"servers.db",
@@ -213,14 +200,14 @@ async def auto_daily_checkin(ip: str, page: Page, extension_id: str, context: Br
 				)
 				CURSOR: sqlite3.Cursor = DB.cursor()
 
-				CURSOR.execute(f"UPDATE SERVERS set DAY{day} = ? WHERE ip = ?", ("True", ip));DB.commit()
+				CURSOR.execute(f"UPDATE SERVERS set DAY{day} = ? WHERE IP = ?", ("True", ip));DB.commit()
 				DB.close()
-			else:
+			except:
 				errors += 1
-				print(f"[INFO] {datetime.now()}")
+				print(f"[INFO] {datetime.now()} Не удалось выполнить ")
 		except:errors += 1
 
-async def run(ip: str, seed_phrase: list, private_key: str, playwright: Playwright):
+async def run(ip: str, private_key: str, playwright: Playwright):
 	"""Раннер для выполнения круга"""
 	data_dir: str = get_user_data_dir()
 	context: BrowserContext = await playwright.chromium.launch_persistent_context(
@@ -239,7 +226,6 @@ async def run(ip: str, seed_phrase: list, private_key: str, playwright: Playwrig
 	await full_wallet_setup(
 		page = page,
 		context = context,
-		seed_phrase = seed_phrase,
 		private_key = private_key,
 		extension_id = extension_id
 	)
@@ -258,16 +244,17 @@ async def run(ip: str, seed_phrase: list, private_key: str, playwright: Playwrig
 	)
 
 	await context.close()
+	print(f"[INFO] {datetime.now()} Сервер: {ip} выполнил таск!")
 	shutil.rmtree(data_dir, ignore_errors = True)
 
-async def main(ip: str, seed_phrase: str, private_key: str):
+async def main(ip: str, private_key: str):
 	"""Стартер раннера"""
 	async with async_playwright() as p:
-		await run(ip, seed_phrase.split(), private_key, p)
+		await run(ip, private_key, p)
 
 if __name__ == '__main__':
 	DB: sqlite3.Connection = sqlite3.connect(
-		"servers.db",
+		"SERVERS.db",
 		check_same_thread = False
 	)
 	CURSOR: sqlite3.Cursor = DB.cursor()
@@ -276,12 +263,24 @@ if __name__ == '__main__':
 	for data in CURSOR.execute(f"SELECT * FROM SERVERS WHERE BYTENOVA = 'True'"):
 		ip: str = data[0]
 		notebook: str = data[1]
-		seed_phrase: str = data[2]
-		private_key: str = data[3]
-		ARRAY.append(f"{ip}:{notebook}:{seed_phrase}:{private_key}")
+		private_key: str = data[2]
+		ARRAY.append(f"{ip}:{notebook}:{private_key}")
 	DB.close()
 
-	for data in ARRAY:asyncio.run(main(data.split(":")[0], data.split(":")[2], data.split(":")[3]))
+	for data in ARRAY:
+		try:asyncio.run(main(data.split(":")[0], data.split(":")[2]))
+		except:pass
+	ARRAY.clear()
+	DB: sqlite3.connection(
+		"servers.db",
+		check_same_thread = False
+	)
+	for data in CURSOR.execute(f"SELECT * FROM SERVERS WHERE BYTENOVA = 'True'"):
+		ip: str = data[0]
+		notebook: str = data[1]
+		private_key: str = data[2]
+		ARRAY.append(f"{ip}:{notebook}:{private_key}")
+	DB.close()
 
 	print(
 		f"[INFO] {datetime.now()} ВЫПОЛНИЛ: {success}\nОШИБОК: {errors}"
