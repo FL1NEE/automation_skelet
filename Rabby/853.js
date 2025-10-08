@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkrabby=self.webpackChunkrabby||[]).push([[853],{468853:(e,a,b)=>{b.r(a),b.d(a,{default:()=>s});const s="- 简化 Send/Swap/Bridge 的签名体验\n- 支持取消 EIP-7702 授权"}}]);
